@@ -1,0 +1,182 @@
+---
+title: "2021 AOS Presentation"
+author: "Stepfanie M Aguillon"
+date: "7/13/2021"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(knitr)
+```
+
+## Load packages
+
+To start, load all of the required packages. 
+
+```{r message=FALSE}
+library(tidyverse)
+library(palmerpenguins)
+data(package="palmerpenguins")
+```
+
+`dplyr` is a package within the `tidyverse`, but all of the packages are really useful so we'll load the entire `tidyverse`.
+
+`palmerpenguins` contains an example dataset that we'll be working with. (This is to avoid the commonly used `iris` dataset, which was published in the Annals of Eugenics!) More details on the `palmerpenguins' package can be found here <https://allisonhorst.github.io/palmerpenguins/>
+
+
+
+## About the dataset
+
+The `penguins` dataset contains data for 344 penguins from 3 different species collected from 3 islands. There are 8 different variables for each individual row. Let's look at the first few rows:
+
+```{r}
+# throughout this document, the only purpose of the function `kable` is to provide nice visuals of the tables
+kable(head(penguins))
+```
+
+Penguin species = `r levels(penguins$species)`
+
+Island names = `r levels(penguins$island)`
+
+
+
+## `dplyr` is great for data processing
+
+Now that we have a basic understanding of the setup of the dataset, let's look at some of the useful functions that `dplyr` offers!
+
+### 1. Working with rows
+
+There are a lot of things you might want to do with the **observations** in your dataset. Maybe you want to separate observations out for a particular species or island (`filter`; example 1.1)? Or maybe you'd like to arrange your observations based on body mass (`arrange`; example 1.2)? Or maybe you'd like a random subset of your dataset (`sample_n`; example 1.3)?
+
+#### Example 1.1 (`filter`)
+Make a dataset with ONLY Gentoo penguins
+```{r}
+gentoo <- filter(penguins, species=="Gentoo")
+kable(head(gentoo))
+```
+
+Make a datset with ALL species, but only for Dream Island
+```{r}
+dream <- filter(penguins, island=="Dream")
+kable(head(dream))
+```
+
+#### Example 1.2 (`arrange`)
+Arrange our dataset based on body mass
+```{r}
+body_mass <- arrange(penguins, body_mass_g)
+kable(head(body_mass))
+```
+
+#### Example 1.3 (`sample_n`)
+Take a random sample of 5 observations (without replacement) from the dataset
+```{r}
+random_sample <- sample_n(penguins, 5, replace=FALSE)
+kable(head(random_sample))
+```
+
+
+### 2. Working with columns
+
+We've worked through some useful functions for working directly with your observations, but you might also want to work with your different **variables**. Maybe you want to select only those variables that describe the bill (`select`; example 2.1)? Or maybe you'd like to rename a variable (`rename`; example 2.2)? Or maybe you'd like a whole NEW variable (`mutate`; example 2.3)?
+
+#### Example 2.1 (`select`)
+Make a dataset with just the variables that describe the bill for each species
+```{r}
+bill_variables <- select(penguins, species, bill_length_mm, bill_depth_mm)
+# syntax within select is the dataframe, and then all the columns you would like to keep separated by commas
+kable(head(bill_variables))
+```
+
+#### Example 2.2 (`rename`)
+Make a dataset that renames the `flipper_length_mm` column to something easier to type
+```{r}
+new_flipper <- rename(penguins, flipper = flipper_length_mm)
+kable(head(new_flipper))
+```
+
+#### Example 2.3 (`mutate`)
+Create a new variable to describe bill size (depth/length)
+```{r}
+new_penguins <- mutate(bill_variables, overall_bill=bill_depth_mm/bill_length_mm)
+# syntax here is new_variable = equation based on existing columns
+kable(head(new_penguins))
+```
+
+
+### 3. Summarizing your dataset
+
+We've now learned some useful functions to work with both observations (rows) and variables (columns) within your dataset. But you might also want to do some summarizing of your entire dataset! `dplyr` offers the really useful function `summarize` (or `summarise`) to help with this! `summarize` is really useful when combined with `group_by` a function that groups observations based on shared values of a variable. Maybe you'd like to know the average flipper size and body mass for each species within your dataset (example 3.1)? Or maybe you'd like to know if the average body size has changed across years for each species (example 3.2)?
+
+#### Example 3.1 (`summarize`)
+Summarize the average flipper size and body mass for each species.
+```{r}
+summarize1 <- group_by(penguins, species) %>%
+  summarize(avg_flipper = mean(na.omit(flipper_length_mm)), avg_body_mass = mean(na.omit(body_mass_g)))
+kable(head(summarize1))
+
+# na.omit() removes NAs from the calculation
+# See the final section for more details on the %>% notation
+```
+
+#### Example 3.2 (`summarize`)
+Summarize the average body size within each species for each year
+```{r}
+summarize2 <- group_by(penguins, species, year) %>%
+  summarize(avg_body_mass = mean(na.omit(body_mass_g)))
+kable(head(summarize2))
+
+# na.omit() removes NAs from the calculation
+# See the final section for more details on the %>% notation
+```
+
+
+### 4. Joining multiple datasets
+
+You may want to combine **multiple** datasets together! This is really useful when you have information spread across multiple datafiles. There are a number of join functions within `dplyr`, including `left_join`, `right_join`, `inner_join`, and `full_join`. Depending on your goal, different join functions may be more or less appropriate. Maybe you have additional information for each individual in a separate datafile that you'd like to work with (exercise 4.1)?
+
+Here is a second dataset that we can join to the one we've been working with. This is a subset of columns from the raw dataframe (`penguins_raw`) that is also available through `palmerpenguins`.
+```{r}
+#subsetting the larger raw penguins dataframe to use as an example second dataframe to join with
+small_penguins_raw <- select(penguins_raw, `Island`, `Culmen Length (mm)`, `Culmen Depth (mm)`, `Flipper Length (mm)`, `Stage`, `Clutch Completion`) %>%
+#rename variables to match the dataframe we've been working with
+  rename(island=Island, bill_length_mm = `Culmen Length (mm)`, bill_depth_mm = `Culmen Depth (mm)`, flipper_length_mm = `Flipper Length (mm)`, stage = Stage, clutch_complete = `Clutch Completion`)
+
+#in most cases, you would have a "key" column that is identical between your two dataframes, here I'm going to use a combination of Island ID, bill length, bill depth, and flipper length to identify individuals and join the two dataframes
+```
+
+#### Example 4.1
+We now have another dataframe with information on the stage when observations were taken and if the individual completed their clutch. We'll join using `inner_join` to keep only those rows that are in both dataframes. 
+```{r warning=FALSE}
+joined_df <- inner_join(penguins, small_penguins_raw, by=c("island","bill_length_mm","bill_depth_mm","flipper_length_mm"))
+#Now we have two additional columns (stage and clutch_complete) that provide more information on each individual in the dataset!
+kable(head(joined_df))
+```
+
+
+### 5. Combining it all together
+
+Finally, you may want to combine multiple approaches without defining a new dataframe at each step! The `%>%` (pipe operator) is really handy for this kind of approach! It allows you to string together multiple functions within `dplyr` (and the `tidyverse` more generally), and helps make your code more streamlined.
+
+#### Example 5.1
+Maybe you're only interested in bill measurements of Chinstrap penguins and would like to make a new variable that describes bill size and then summarize across sexes. That sounds like a lot of work! But it can actually be accomplished with just a few lines of code!
+```{r}
+# when using this notation, you no longer need to indicate the dataframe WITHIN each function because you tell dplyr the dataframe you're working with at the very beginning (by writing: penguins %>%)
+
+# start by telling dplyr the dataframe you're working with 
+penguins %>%
+  # use filter to select your species (section 1)
+  filter(species=="Chinstrap") %>%
+  # use select to choose the variables you're interested in (section 2)
+  select(species, sex, bill_length_mm, bill_depth_mm) %>%
+  # use mutate to create your new variable (section 2)
+  mutate(overall_bill=bill_depth_mm/bill_length_mm) %>%
+  # use group_by and summarize to create your summary (section 3)
+  group_by(sex) %>%
+  summarize(avg_bill_length=mean(na.omit(bill_length_mm)), avg_bill_depth=mean(na.omit(bill_depth_mm)), avg_overall_bill=mean(na.omit(overall_bill))) %>%
+  kable()
+```
